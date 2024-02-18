@@ -367,20 +367,28 @@ void cmdplay::video::FfmpegDecoder::WorkerThread(FfmpegDecoder* instance)
 						int h = instance->m_height;
 						int w = instance->m_width;
 						int linesize = instance->m_frameRGB->linesize[0];
-						uint8_t* d_data, * d_src;
-						uint8_t* temp;
 						int le = newFrame->m_dataLength;
 						int sizedata, sizesrc;
+
 						sizedata = sizeof(unsigned char) * le;
 						sizesrc = linesize * h;
-						temp = (uint8_t*)malloc(sizedata);
-						cudaMalloc((void**)&d_data, sizedata);
-						cudaMalloc((void**)&d_src, sizesrc);
+
+						//uint8_t* temp = (uint8_t*)malloc(sizedata);
+						uint8_t* d_data;
+						if (cudaMalloc((void**)&d_data, sizedata) != ::cudaSuccess)
+							throw FfmpegException("cuda_malloc failure d_data");
+
+						uint8_t* d_src;
+						if (cudaMalloc((void**)&d_src, sizesrc) != ::cudaSuccess)
+							throw FfmpegException("cuda_malloc_failure d_src");
+
 						cudaMemcpy(d_src, src, sizesrc, cudaMemcpyHostToDevice);
 						transferRGB << <h, w >> > (linesize, d_data, d_src);
+
 						cudaDeviceSynchronize();
-						cudaMemcpy(temp, d_data, sizedata, cudaMemcpyDeviceToHost);
-						newFrame->m_data = temp;
+						cudaMemcpy(newFrame->m_data, d_data, sizedata, cudaMemcpyDeviceToHost);
+						cudaFree(d_data);
+						cudaFree(d_src);
 
 						instance->m_decodedFrames.push_back(newFrame);
 					}
