@@ -2,31 +2,17 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <CudaCompile Include="src\Asciifier.cpp" />
-    <CudaCompile Include="src\audio\AudioEngine.cpp" />
-    <CudaCompile Include="src\audio\AudioException.cpp" />
-    <CudaCompile Include="src\audio\AudioSource.cpp" />
     <CudaCompile Include="src\ColorConverter.cpp" />
     <CudaCompile Include="src\ConsoleColor.cpp" />
     <CudaCompile Include="src\ConsoleUtils.cpp" />
     <CudaCompile Include="src\gpuAsciifier.cu" />
-    <CudaCompile Include="src\Instance.cpp" />
     <CudaCompile Include="src\Main.cu" />
     <CudaCompile Include="src\Stopwatch.cpp" />
     <CudaCompile Include="src\VideoPlayer.cpp" />
     <CudaCompile Include="src\video\FfmpegDecoder.cu" />
-    <CudaCompile Include="src\video\FfmpegException.cu" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Asciifier.hpp">
-      <Filter>Header</Filter>
-    </ClInclude>
-    <ClInclude Include="src\audio\AudioEngine.hpp">
-      <Filter>Header</Filter>
-    </ClInclude>
-    <ClInclude Include="src\audio\AudioException.hpp">
-      <Filter>Header</Filter>
-    </ClInclude>
-    <ClInclude Include="src\audio\AudioSource.hpp">
       <Filter>Header</Filter>
     </ClInclude>
     <ClInclude Include="src\ColorConverter.hpp">
@@ -44,16 +30,7 @@
     <ClInclude Include="src\video\FfmpegDecoder.cuh">
       <Filter>Header</Filter>
     </ClInclude>
-    <ClInclude Include="src\video\FfmpegException.cuh">
-      <Filter>Header</Filter>
-    </ClInclude>
     <ClInclude Include="src\gpuAsciifier.cuh">
-      <Filter>Header</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Instance.hpp">
-      <Filter>Header</Filter>
-    </ClInclude>
-    <ClInclude Include="src\audio\SpectrumElementCount.hpp">
       <Filter>Header</Filter>
     </ClInclude>
     <ClInclude Include="src\Stopwatch.hpp">
@@ -65,10 +42,24 @@
     <ClInclude Include="src\VideoPlayer.hpp">
       <Filter>Header</Filter>
     </ClInclude>
+    <ClInclude Include="src\audio\FfmpegAudio.hpp">
+      <Filter>Header</Filter>
+    </ClInclude>
+    <ClInclude Include="src\FfmpegException.hpp">
+      <Filter>Header</Filter>
+    </ClInclude>
+    <ClInclude Include="src\MiniAudioException.hpp">
+      <Filter>Header</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Header">
       <UniqueIdentifier>{d1668167-c977-41d6-9c8c-6c23bf78fe5f}</UniqueIdentifier>
     </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\audio\FfmpegAudio.cpp" />
+    <ClCompile Include="src\FfmpegException.cpp" />
+    <ClCompile Include="src\MiniAudioException.cpp" />
   </ItemGroup>
 </Project>

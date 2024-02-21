@@ -219,9 +219,15 @@ cmdplay::video::DecodedFrame* cmdplay::video::FfmpegDecoder::GetNextFrame()
 	if (m_decodedFrames.size() == 0)
 		return nullptr;
 
+	
+
 	auto nextFrame = m_decodedFrames[0];
 	m_decodedFrames.erase(m_decodedFrames.begin());
 	return nextFrame;
+}
+
+int cmdplay::video::FfmpegDecoder::getframessize() {
+	return m_decodedFrames.size();
 }
 
 void cmdplay::video::FfmpegDecoder::SkipTo(float playbackTime)
@@ -286,9 +292,10 @@ bool cmdplay::video::FfmpegDecoder::ContainsAudioStream()
 	return m_containsAudioStream;
 }
 
-__global__ void cmdplay::video::transferRGB(int line_size, unsigned char * data, unsigned char* src) {
-	int srcpixloc = blockIdx.x * line_size + threadIdx.x * 4;
+__global__ void cmdplay::video::transferRGB(int line_size, unsigned char * data, unsigned char* src, int h, int w) {
+	//int srcpixloc = blockIdx.x * line_size + threadIdx.x * 4;
 	int gpuindex = (blockIdx.x * blockDim.x + threadIdx.x);	
+	int srcpixloc = gpuindex / w * line_size + gpuindex%w * 4;
 	data[gpuindex * 4] = src[srcpixloc];
 	data[gpuindex * 4 + 1] = src[srcpixloc + 1];
 	data[gpuindex * 4 + 2] = src[srcpixloc + 2];
@@ -358,11 +365,11 @@ void cmdplay::video::FfmpegDecoder::WorkerThread(FfmpegDecoder* instance)
 						// Copies the frame data to the buffer
 						std::lock_guard<std::mutex> fblg{ instance->m_mainThreadFramebufferLock };
 						unsigned char* buffer = instance->m_mainThreadFramebuffer;
-						uint8_t* src = instance->m_frameRGB->data[0];
-						DecodedFrame* newFrame = new DecodedFrame(instance->m_width * instance->m_height * 4,
+						DecodedFrame *newFrame = new DecodedFrame(instance->m_width * instance->m_height * 4,
 							instance->m_frame->pts * static_cast<float>(
 								av_q2d(instance->m_formatCtx->streams[instance->m_videoStreamIndex]->time_base)));
 
+						
 						
 						int h = instance->m_height;
 						int w = instance->m_width;
@@ -373,24 +380,31 @@ void cmdplay::video::FfmpegDecoder::WorkerThread(FfmpegDecoder* instance)
 						sizedata = sizeof(unsigned char) * le;
 						sizesrc = linesize * h;
 
-						//uint8_t* temp = (uint8_t*)malloc(sizedata);
+						//= instance->m_frameRGB->data[0]
+
+						
+						uint8_t* src, *d_src;
+						cudaHostAlloc((void**)&src, sizesrc, cudaHostAllocWriteCombined | cudaHostAllocMapped);
+						newFrame->start = std::clock();
+						memcpy(src, instance->m_frameRGB->data[0], sizesrc);
+
+						cudaHostGetDevicePointer((void**)&d_src, src, 0);
+
+
 						uint8_t* d_data;
-						if (cudaMalloc((void**)&d_data, sizedata) != ::cudaSuccess)
+						if (cudaMalloc((void**)&(newFrame->m_data), sizedata) != ::cudaSuccess)
 							throw FfmpegException("cuda_malloc failure d_data");
+						newFrame->t1 = std::clock() - newFrame->start;
+						newFrame->start = std::clock();
 
-						uint8_t* d_src;
-						if (cudaMalloc((void**)&d_src, sizesrc) != ::cudaSuccess)
-							throw FfmpegException("cuda_malloc_failure d_src");
-
-						cudaMemcpy(d_src, src, sizesrc, cudaMemcpyHostToDevice);
-						transferRGB << <h, w >> > (linesize, d_data, d_src);
+						transferRGB << <h*w/1024 + 1, 1024 >> > (linesize, newFrame->m_data, d_src, h, w);
 
 						cudaDeviceSynchronize();
-						cudaMemcpy(newFrame->m_data, d_data, sizedata, cudaMemcpyDeviceToHost);
-						cudaFree(d_data);
-						cudaFree(d_src);
 
+						cudaFreeHost(src);
+						newFrame->t2 = std::clock() - newFrame->start;
 						instance->m_decodedFrames.push_back(newFrame);
+
 					}
 				}
 				av_packet_unref(instance->m_packet);

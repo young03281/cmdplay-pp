@@ -23,7 +23,7 @@ namespace cmdplay
 {
 	namespace video
 	{
-		__global__ void transferRGB(int line_size, unsigned char* data, unsigned char* src);
+		__global__ void transferRGB(int line_size, unsigned char* data, unsigned char* src, int h, int w);
 		class FfmpegDecoder
 		{
 		public:
@@ -32,6 +32,8 @@ namespace cmdplay
 			/// </summary>
 			FfmpegDecoder();
 			~FfmpegDecoder();
+
+			int getframessize();
 
 			/// <summary>
 			/// Loads a video (also unloads the previous video, if still loaded).

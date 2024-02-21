@@ -14,20 +14,20 @@ cmdplay::gpuAsciiFier::gpuAsciiFier(const std::string& brightnessLevels, int fra
 	m_frameWidthWithStride = m_frameWidth;
 }
 
-char* cmdplay::gpuAsciiFier::BuildFrame(uint8_t * rgbData) {
+char* cmdplay::gpuAsciiFier::BuildFrame(uint8_t * d_rgbData) {
 	char* framechars;
-	uint8_t* rgb;
+	//uint8_t* rgb;
 	char* brightnesslevel;
 
 	cudaDeviceProp p;
 
 	int rgbsize, framecharssize, brightnesslevelsize;
-	rgbsize = sizeof(unsigned char) * m_framepixelbytescount;
+	//rgbsize = sizeof(unsigned char) * m_framepixelbytescount;
 	framecharssize = sizeof(char) * m_framebuffersize;
 	brightnesslevelsize = sizeof(char) * m_brightnessLevelCount;
 
 	char* d_framechars;
-	uint8_t* d_rgb;
+	//uint8_t* d_rgb;
 	char * d_brightnessLevels;
 
 	cudaSetDeviceFlags(cudaDeviceMapHost);
@@ -38,11 +38,10 @@ char* cmdplay::gpuAsciiFier::BuildFrame(uint8_t * rgbData) {
 		exit(0);
 
 	cudaHostAlloc((void**)&framechars, framecharssize, cudaHostAllocWriteCombined | cudaHostAllocMapped);
-	cudaHostAlloc((void**)&rgb, rgbsize, cudaHostAllocWriteCombined | cudaHostAllocMapped);
+	//cudaHostAlloc((void**)&rgb, rgbsize, cudaHostAllocWriteCombined | cudaHostAllocMapped);
 	cudaHostAlloc((void**)&brightnesslevel,brightnesslevelsize, cudaHostAllocWriteCombined | cudaHostAllocMapped);
 
-
-	memcpy(rgb, rgbData, rgbsize);
+	//memcpy(rgb, rgbData, rgbsize);
 
 	char* h_bri = (char*)m_brightnessLevels.c_str();
 
@@ -55,14 +54,14 @@ char* cmdplay::gpuAsciiFier::BuildFrame(uint8_t * rgbData) {
 	memset(framechars + m_framebuffersize, '\0', 1);
 
 	cudaHostGetDevicePointer((void**)&d_framechars, framechars, 0);
-	cudaHostGetDevicePointer((void**)&d_rgb, rgb, 0);
+	//cudaHostGetDevicePointer((void**)&d_rgb, rgb, 0);
 	cudaHostGetDevicePointer((void**)&d_brightnessLevels, brightnesslevel, 0);
 
-	asciifier<< <m_frameHeight*m_frameWidth/256 + 1, 256>> > (d_rgb, d_framechars,d_brightnessLevels, m_brightnessLevelCount, m_frameWidth);
+	asciifier<< <m_frameHeight*m_frameWidth/256 + 1, 256>> > (d_rgbData, d_framechars,d_brightnessLevels, m_brightnessLevelCount, m_frameWidth);
 
 	cudaDeviceSynchronize();
 
-	cudaFreeHost(rgb);
+	//cudaFreeHost(rgb);
 	cudaFreeHost(brightnesslevel);
 
 	return framechars;

@@ -1,18 +1,19 @@
 #pragma once
 #include <stdint.h>
+#include <ctime>
 namespace cmdplay
 {
 	namespace video
 	{
 		struct DecodedFrame
 		{
+			std::clock_t start, t1, t2;
 			float m_time;
 			uint8_t* m_data;
 			int m_dataLength;
 
 			DecodedFrame(int dataLength, float time) 
 			{
-				m_data = new uint8_t[dataLength];
 				m_dataLength = dataLength;
 				m_time = time;
 			}
@@ -28,7 +29,7 @@ namespace cmdplay
 
 			~DecodedFrame()
 			{
-				delete m_data;
+				cudaFree(m_data);
 			}
 		};
 	}

@@ -5,6 +5,7 @@
 #include "Stopwatch.hpp"
 #include <conio.h>
 #include <iostream>
+#include <ctime>
 
 cmdplay::VideoPlayer::VideoPlayer(const std::string& filePath, const std::string& brightnessLevels) :
 	m_filePath(filePath), m_brightnessLevels(brightnessLevels)
@@ -52,6 +53,8 @@ void cmdplay::VideoPlayer::Enter()
 	{
 		// for some reason, windows enables the cursor every time we resize, so we should set it each time
 		ConsoleUtils::ShowConsoleCursor(false);
+
+		//std::cout << m_decoder->getframessize() << std::endl;
 
 		if (_kbhit())
 		{
@@ -133,6 +136,8 @@ void cmdplay::VideoPlayer::Enter()
 		else
 			syncTime = syncWatch.GetElapsed();
 		
+
+
 		if (!playing)
 		{
 			std::this_thread::sleep_for(std::chrono::milliseconds(10));
@@ -167,11 +172,13 @@ void cmdplay::VideoPlayer::Enter()
 				syncTime = m_audioSource->GetPlaybackTime();
 		}
 		cmdplay::ConsoleUtils::SetCursorPosition(0, 0);
-		char * a = d_asciifier->BuildFrame(nextFrame->m_data);
-		std::cout << a;
+		nextFrame->start = std::clock();
+		char* frame = d_asciifier->BuildFrame(nextFrame->m_data);
+		std::cout << frame;
+		std::cout << std::endl << double(std::clock() - nextFrame->start + nextFrame->t1 + nextFrame->t2) / (double)CLOCKS_PER_SEC << "   " << double(std::clock() - nextFrame->start) / (double)CLOCKS_PER_SEC << "      " << double(nextFrame->t1) / (double)CLOCKS_PER_SEC << "     " << double(nextFrame->t2) / (double)CLOCKS_PER_SEC << "     " << double(nextFrame->t1) / (double)CLOCKS_PER_SEC << "    " << (double)1 / 120;
 
-		cudaFreeHost(a);
-		delete nextFrame;
+		cudaFreeHost(frame);
+		nextFrame->~DecodedFrame();
 	}
 	ConsoleUtils::ShowConsoleCursor(true);
 }
