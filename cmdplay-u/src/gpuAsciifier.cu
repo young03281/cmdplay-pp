@@ -14,55 +14,37 @@ cmdplay::gpuAsciiFier::gpuAsciiFier(const std::string& brightnessLevels, int fra
 	m_frameWidthWithStride = m_frameWidth;
 }
 
-char* cmdplay::gpuAsciiFier::BuildFrame(uint8_t * d_rgbData) {
-	char* framechars;
-	//uint8_t* rgb;
-	char* brightnesslevel;
+int cmdplay::gpuAsciiFier::getBufferSize() {
+	return m_framebuffersize;
+}
 
-	cudaDeviceProp p;
+char* cmdplay::gpuAsciiFier::BuildFrame(uint8_t * d_rgbData) {
 
 	int rgbsize, framecharssize, brightnesslevelsize;
-	//rgbsize = sizeof(unsigned char) * m_framepixelbytescount;
 	framecharssize = sizeof(char) * m_framebuffersize;
 	brightnesslevelsize = sizeof(char) * m_brightnessLevelCount;
 
+	char* framechars = (char*)malloc(sizeof(char) * framecharssize);
+
 	char* d_framechars;
-	//uint8_t* d_rgb;
 	char * d_brightnessLevels;
 
-	cudaSetDeviceFlags(cudaDeviceMapHost);
+	cudaMalloc((void**)&d_framechars, framecharssize);
+	cudaMalloc((void**)&d_brightnessLevels,brightnesslevelsize);
 
-	cudaGetDeviceProperties(&p, 0);
+	cudaMemcpy(d_brightnessLevels, m_brightnessLevels.c_str(), m_brightnessLevelCount, cudaMemcpyHostToDevice);
 
-	if (!p.canMapHostMemory)
-		exit(0);
+	asciifier<< <m_frameHeight*m_frameWidth/1024 + 1, 1024>> > (d_rgbData, d_framechars,d_brightnessLevels, m_brightnessLevelCount, m_frameWidth);
+	cudaFree(d_brightnessLevels);
 
-	cudaHostAlloc((void**)&framechars, framecharssize, cudaHostAllocWriteCombined | cudaHostAllocMapped);
-	//cudaHostAlloc((void**)&rgb, rgbsize, cudaHostAllocWriteCombined | cudaHostAllocMapped);
-	cudaHostAlloc((void**)&brightnesslevel,brightnesslevelsize, cudaHostAllocWriteCombined | cudaHostAllocMapped);
-
-	//memcpy(rgb, rgbData, rgbsize);
-
-	char* h_bri = (char*)m_brightnessLevels.c_str();
-
-	memcpy(brightnesslevel, h_bri, brightnesslevelsize);
+	cudaMemcpy(framechars, d_framechars, framecharssize, cudaMemcpyDeviceToHost);
+	cudaFree(d_framechars);
 
 	for (int i = 1; i < m_framebuffersize / (m_frameWidthWithStride + 1) + 1; ++i) {
 		memset(framechars + i * (m_frameWidthWithStride + 1) - 1,'\n', 1);
 
 	}
 	memset(framechars + m_framebuffersize, '\0', 1);
-
-	cudaHostGetDevicePointer((void**)&d_framechars, framechars, 0);
-	//cudaHostGetDevicePointer((void**)&d_rgb, rgb, 0);
-	cudaHostGetDevicePointer((void**)&d_brightnessLevels, brightnesslevel, 0);
-
-	asciifier<< <m_frameHeight*m_frameWidth/256 + 1, 256>> > (d_rgbData, d_framechars,d_brightnessLevels, m_brightnessLevelCount, m_frameWidth);
-
-	cudaDeviceSynchronize();
-
-	//cudaFreeHost(rgb);
-	cudaFreeHost(brightnesslevel);
 
 	return framechars;
 }

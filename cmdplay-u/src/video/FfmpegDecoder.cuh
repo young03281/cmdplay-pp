@@ -92,6 +92,8 @@ namespace cmdplay
 			AVPacket* m_packet = nullptr;
 			int m_videoStreamIndex = -1;
 			int64_t m_skippedFrames = 0;
+			uint8_t* src;
+			bool m_srcalloced = false;
 
 			unsigned char* m_mainThreadFramebuffer = nullptr;
 			std::mutex m_mainThreadFramebufferLock;

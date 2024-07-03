@@ -11,6 +11,10 @@ namespace cmdplay {
 				bool useColors, bool useColorDithering, bool useTextDithering, bool useAccurateColors, bool useAccurateColorsFullPixel);
 
 			char* BuildFrame(uint8_t * rgb_data);
+
+			int getBufferSize();
+
+			std::clock_t t1, t2;
 		private:
 			std::vector<std::string> frames;
 			std::string m_brightnessLevels;

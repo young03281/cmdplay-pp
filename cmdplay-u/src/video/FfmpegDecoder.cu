@@ -295,10 +295,11 @@ bool cmdplay::video::FfmpegDecoder::ContainsAudioStream()
 __global__ void cmdplay::video::transferRGB(int line_size, unsigned char * data, unsigned char* src, int h, int w) {
 	//int srcpixloc = blockIdx.x * line_size + threadIdx.x * 4;
 	int gpuindex = (blockIdx.x * blockDim.x + threadIdx.x);	
-	int srcpixloc = gpuindex / w * line_size + gpuindex%w * 4;
+	int srcpixloc = gpuindex / w * line_size + gpuindex % w * 4;
 	data[gpuindex * 4] = src[srcpixloc];
 	data[gpuindex * 4 + 1] = src[srcpixloc + 1];
 	data[gpuindex * 4 + 2] = src[srcpixloc + 2];
+	data[gpuindex * 4 + 3] = 0;
 }
 
 void cmdplay::video::FfmpegDecoder::WorkerThread(FfmpegDecoder* instance)
@@ -380,30 +381,23 @@ void cmdplay::video::FfmpegDecoder::WorkerThread(FfmpegDecoder* instance)
 						sizedata = sizeof(unsigned char) * le;
 						sizesrc = linesize * h;
 
-						//= instance->m_frameRGB->data[0]
+						//= instance->m_frameRGB->data[0] if theres with a
 
 						
 						uint8_t* src, *d_src;
-						cudaHostAlloc((void**)&src, sizesrc, cudaHostAllocWriteCombined | cudaHostAllocMapped);
-						newFrame->start = std::clock();
-						memcpy(src, instance->m_frameRGB->data[0], sizesrc);
-
-						cudaHostGetDevicePointer((void**)&d_src, src, 0);
+						cudaMalloc((void**)&d_src, sizesrc);
+						cudaMemcpy(d_src, instance->m_frameRGB->data[0], sizesrc, cudaMemcpyHostToDevice);
 
 
 						uint8_t* d_data;
 						if (cudaMalloc((void**)&(newFrame->m_data), sizedata) != ::cudaSuccess)
 							throw FfmpegException("cuda_malloc failure d_data");
-						newFrame->t1 = std::clock() - newFrame->start;
-						newFrame->start = std::clock();
 
-						transferRGB << <h*w/1024 + 1, 1024 >> > (linesize, newFrame->m_data, d_src, h, w);
+						transferRGB <<<h*w/1024 + 1, 1024 >>> (linesize, newFrame->m_data, d_src, h, w);
 
-						cudaDeviceSynchronize();
-
-						cudaFreeHost(src);
-						newFrame->t2 = std::clock() - newFrame->start;
 						instance->m_decodedFrames.push_back(newFrame);
+						cudaFree(d_src);
+						
 
 					}
 				}

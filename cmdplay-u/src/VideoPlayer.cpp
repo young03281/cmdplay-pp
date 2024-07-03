@@ -43,6 +43,7 @@ void cmdplay::VideoPlayer::LoadVideo()
 
 void cmdplay::VideoPlayer::Enter()
 {
+	std::ios::sync_with_stdio(false);
 	if (m_audioSource != nullptr)
 		m_audioSource->PlayASync();
 	float syncTime = 0.0f;
@@ -140,7 +141,7 @@ void cmdplay::VideoPlayer::Enter()
 
 		if (!playing)
 		{
-			std::this_thread::sleep_for(std::chrono::milliseconds(10));
+			std::this_thread::sleep_for(std::chrono::milliseconds(1));
 			continue;
 		}
 
@@ -172,13 +173,9 @@ void cmdplay::VideoPlayer::Enter()
 				syncTime = m_audioSource->GetPlaybackTime();
 		}
 		cmdplay::ConsoleUtils::SetCursorPosition(0, 0);
-		nextFrame->start = std::clock();
-		char* frame = d_asciifier->BuildFrame(nextFrame->m_data);
+		std::string frame = d_asciifier->BuildFrame(nextFrame->m_data);
 		std::cout << frame;
-		std::cout << std::endl << double(std::clock() - nextFrame->start + nextFrame->t1 + nextFrame->t2) / (double)CLOCKS_PER_SEC << "   " << double(std::clock() - nextFrame->start) / (double)CLOCKS_PER_SEC << "      " << double(nextFrame->t1) / (double)CLOCKS_PER_SEC << "     " << double(nextFrame->t2) / (double)CLOCKS_PER_SEC << "     " << double(nextFrame->t1) / (double)CLOCKS_PER_SEC << "    " << (double)1 / 120;
-
-		cudaFreeHost(frame);
-		nextFrame->~DecodedFrame();
+		delete nextFrame;
 	}
 	ConsoleUtils::ShowConsoleCursor(true);
 }

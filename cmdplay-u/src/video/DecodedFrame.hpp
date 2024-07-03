@@ -7,7 +7,6 @@ namespace cmdplay
 	{
 		struct DecodedFrame
 		{
-			std::clock_t start, t1, t2;
 			float m_time;
 			uint8_t* m_data;
 			int m_dataLength;
