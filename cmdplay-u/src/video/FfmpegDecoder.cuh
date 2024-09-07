@@ -94,6 +94,7 @@ namespace cmdplay
 			int64_t m_skippedFrames = 0;
 			uint8_t* src;
 			bool m_srcalloced = false;
+			uint8_t* d_src, d_data;
 
 			unsigned char* m_mainThreadFramebuffer = nullptr;
 			std::mutex m_mainThreadFramebufferLock;

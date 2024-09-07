@@ -150,6 +150,16 @@ void cmdplay::video::FfmpegDecoder::LoadVideo(const std::string& src, int width,
 		static_cast<unsigned char*>(calloc(m_mainThreadFramebufferSize, sizeof(unsigned char)));
 
 	m_videoLoaded = true;
+
+	int linesize = m_frameRGB->linesize[0];
+	int le = m_height * m_width * 4;
+	int sizedata, sizesrc;
+
+	sizedata = sizeof(unsigned char) * le;
+	sizesrc = linesize * m_height;
+
+	cudaMalloc((void**)&d_src, sizesrc);
+
 }
 
 void cmdplay::video::FfmpegDecoder::UnloadVideo()
@@ -183,6 +193,8 @@ void cmdplay::video::FfmpegDecoder::UnloadVideo()
 		m_swsCtx = nullptr;
 	}
 	m_videoLoaded = false;
+
+	
 }
 
 void cmdplay::video::FfmpegDecoder::LoadVideoAsync(const std::string& src, int width, int height)
@@ -285,6 +297,15 @@ void cmdplay::video::FfmpegDecoder::Resize(int width, int height)
 		delete m_decodedFrames[i];
 
 	m_decodedFrames.clear();
+
+	int linesize = m_frameRGB->linesize[0];
+	int le = m_height * m_width * 4;
+	int sizedata, sizesrc;
+
+	sizedata = sizeof(unsigned char) * le;
+	sizesrc = linesize * m_height;
+
+	cudaMalloc((void**)&d_src, sizesrc);
 }
 
 bool cmdplay::video::FfmpegDecoder::ContainsAudioStream()
@@ -296,10 +317,12 @@ __global__ void cmdplay::video::transferRGB(int line_size, unsigned char * data,
 	//int srcpixloc = blockIdx.x * line_size + threadIdx.x * 4;
 	int gpuindex = (blockIdx.x * blockDim.x + threadIdx.x);	
 	int srcpixloc = gpuindex / w * line_size + gpuindex % w * 4;
-	data[gpuindex * 4] = src[srcpixloc];
-	data[gpuindex * 4 + 1] = src[srcpixloc + 1];
-	data[gpuindex * 4 + 2] = src[srcpixloc + 2];
-	data[gpuindex * 4 + 3] = 0;
+	if (gpuindex < h * w) {
+		data[gpuindex * 4] = src[srcpixloc];
+		data[gpuindex * 4 + 1] = src[srcpixloc + 1];
+		data[gpuindex * 4 + 2] = src[srcpixloc + 2];
+		data[gpuindex * 4 + 3] = 0;
+	}
 }
 
 void cmdplay::video::FfmpegDecoder::WorkerThread(FfmpegDecoder* instance)
@@ -372,31 +395,21 @@ void cmdplay::video::FfmpegDecoder::WorkerThread(FfmpegDecoder* instance)
 
 						
 						
-						int h = instance->m_height;
-						int w = instance->m_width;
+
 						int linesize = instance->m_frameRGB->linesize[0];
 						int le = newFrame->m_dataLength;
 						int sizedata, sizesrc;
 
 						sizedata = sizeof(unsigned char) * le;
-						sizesrc = linesize * h;
+						sizesrc = linesize * instance->m_height;
 
-						//= instance->m_frameRGB->data[0] if theres with a
+						cudaMemcpy(instance->d_src, instance->m_frameRGB->data[0], sizesrc, cudaMemcpyHostToDevice);
 
-						
-						uint8_t* src, *d_src;
-						cudaMalloc((void**)&d_src, sizesrc);
-						cudaMemcpy(d_src, instance->m_frameRGB->data[0], sizesrc, cudaMemcpyHostToDevice);
+						cudaMalloc((void**)&(newFrame->m_data), sizedata);
 
-
-						uint8_t* d_data;
-						if (cudaMalloc((void**)&(newFrame->m_data), sizedata) != ::cudaSuccess)
-							throw FfmpegException("cuda_malloc failure d_data");
-
-						transferRGB <<<h*w/1024 + 1, 1024 >>> (linesize, newFrame->m_data, d_src, h, w);
+						transferRGB <<<instance->m_height * instance->m_width/1024 + 1, 1024 >>> (linesize, newFrame->m_data, instance->d_src, instance->m_height, instance->m_width);
 
 						instance->m_decodedFrames.push_back(newFrame);
-						cudaFree(d_src);
 						
 
 					}

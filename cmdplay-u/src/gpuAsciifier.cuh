@@ -17,7 +17,7 @@ namespace cmdplay {
 			std::clock_t t1, t2;
 		private:
 			std::vector<std::string> frames;
-			std::string m_brightnessLevels;
+			char* m_brightnessLevels;
 			int m_frameWidth;
 			int m_frameHeight;
 			int m_framebuffersize;
@@ -29,7 +29,11 @@ namespace cmdplay {
 			bool m_useTextDithering;
 			bool m_useAccurateColors;
 			bool m_useAccurateColorsFullPixel;
+			char* m_framechars;
+			char* d_framechars;
+			char* d_brightnessLevels;
+			int* d_wh;
 		};
 }
 
-__global__ void asciifier(uint8_t* rgbData, char* framechars, char* brightnesslevels, int brightnesslevelcount, int width);
+__global__ void asciifier(uint8_t* rgbData, char* framechars, char* brightnesslevel, int width, int height, int brightnesslevelcount);

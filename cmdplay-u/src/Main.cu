@@ -21,7 +21,7 @@ int main(int argc, char* argv[])
 	else
 	{
 		std::cout << "Enter filename: ";
-		filenameInput = "D:/B.mp4";
+		filenameInput = "D:/BB.mp4";
 		if (strlen(filenameInput.c_str()) == 0)
 		{
 			std::cout << "Invalid filename" << std::endl;
