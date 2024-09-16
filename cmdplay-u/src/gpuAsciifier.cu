@@ -11,13 +11,11 @@ cmdplay::gpuAsciiFier::gpuAsciiFier(const std::string& brightnessLevels, int fra
 	m_framepixelbytescount = m_frameWidth * m_frameHeight * 4;
 	m_framebuffersize = (m_frameWidth + 1) * m_frameHeight;
 	m_frameWidthWithStride = m_frameWidth;
-	m_framechars = (char*)malloc(sizeof(char) * m_framebuffersize);
 	m_brightnessLevelCount = strlen(m_brightnessLevels);
-	cudaMalloc((void**)&d_framechars, m_framebuffersize);
+	cudaHostAlloc((void**)&m_framechars, m_framebuffersize, cudaHostAllocMapped);
+	cudaHostGetDevicePointer((void**)&d_framechars, (void*)m_framechars, 0);
 	cudaMallocManaged((void**)&d_brightnessLevels, m_brightnessLevelCount);
-	for (int i = 0; i < m_brightnessLevelCount; i++) {
-		memset(d_brightnessLevels + i, m_brightnessLevels[i], 1);
-	};
+	cudaMemcpy(d_brightnessLevels, m_brightnessLevels, m_brightnessLevelCount, cudaMemcpyHostToDevice);
 
 }
 
@@ -27,17 +25,9 @@ int cmdplay::gpuAsciiFier::getBufferSize() {
 
 char* cmdplay::gpuAsciiFier::BuildFrame(uint8_t * d_rgbData) {
 
-	
+	asciifier << <m_frameWidth * m_frameHeight / 512 + 1, 512 >> > (d_rgbData, d_framechars, d_brightnessLevels, m_frameWidth, m_frameHeight, m_brightnessLevelCount);
 
-	asciifier<< <m_frameWidth * m_frameHeight /512 + 1, 512>> > (d_rgbData, d_framechars,d_brightnessLevels, m_frameWidth , m_frameHeight, m_brightnessLevelCount);
-
-	cudaMemcpy(m_framechars, d_framechars, m_framebuffersize, cudaMemcpyDeviceToHost);
-
-	for (int i = 1; i < m_frameHeight ; ++i) {
-		m_framechars[(m_frameWidthWithStride + 1) * i - 1] = '\n';
-
-	}
-	m_framechars[m_framebuffersize] = '\0';
+	memset(m_framechars + m_framebuffersize, '\0', 1);
 
 	return m_framechars;
 }
@@ -53,13 +43,16 @@ __global__ void asciifier(uint8_t* rgbData, char* framechars, char* brightnessle
 		g = (float)(int)rgbData[byteindex + 1] / 255;
 		b = (float)(int)rgbData[byteindex + 2] / 255;
 
-		int brightnessindex = (0.299 * r + 0.587 * g + 0.114 * b) * 12;
+		int brightnessindex = (0.299 * r + 0.587 * g + 0.114 * b) * brightnesslevelcount;
 
 		if (brightnessindex < 0) {
 			brightnessindex = 0;
-		}if (brightnessindex >= 13) {
-			brightnessindex = 13 - 1;
+		}if (brightnessindex >= brightnesslevelcount) {
+			brightnessindex = brightnesslevelcount - 1;
 		}
 		framechars[frameindex] = brightnesslevel[brightnessindex];
+		if ((index + 1) % (width + 1) == 0) {
+			framechars[index] = '\n';
+		}
 	}
 }
